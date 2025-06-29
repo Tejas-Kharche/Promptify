@@ -1,0 +1,13 @@
+# node modules
+node_modules/
+client/node_modules/
+
+# build files
+client/build/
+
+# environment variables
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db
