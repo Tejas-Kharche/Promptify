@@ -1,207 +1,211 @@
 const axios = require('axios');
 require('dotenv').config();
 
+// Configuration
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT = 10000; // 10 seconds
+const MIN_TRACKS = 10;
+
 let accessToken = null;
 
-const getAccessToken = async () => {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+// ========================
+// 1. SPOTIFY CONFIGURATION
+// ========================
 
-  const authOptions = {
-    method: 'post',
-    url: 'https://accounts.spotify.com/api/token',
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    data: 'grant_type=client_credentials',
-  };
+// Valid Spotify genres (documented in their API)
+const VALID_GENRES = [
+  'acoustic', 'ambient', 'blues', 'classical', 'country',
+  'dance', 'electronic', 'hip-hop', 'jazz', 'pop',
+  'r-n-b', 'rock', 'soul', 'indie', 'alternative'
+];
 
+// Mood to genre mapping
+const moodGenreMap = {
+  happy: ['pop', 'dance', 'happy'],
+  sad: ['sad', 'blues', 'acoustic'],
+  angry: ['rock', 'alternative', 'hard-rock'],
+  anxious: ['ambient', 'classical', 'chill'],
+  romantic: ['r-n-b', 'jazz', 'soul'],
+  confident: ['hip-hop', 'rap', 'trap'],
+  nostalgic: ['indie', 'classic-rock', 'folk'],
+  energetic: ['electronic', 'dance', 'house'],
+  calm: ['chill', 'ambient', 'piano']
+};
+
+// Audio feature targets
+const moodAudioFeatures = {
+  happy: { min_valence: 0.7, max_valence: 0.9, min_energy: 0.6, max_energy: 0.8 },
+  sad: { min_valence: 0.1, max_valence: 0.3, min_energy: 0.2, max_energy: 0.4 },
+  angry: { min_valence: 0.2, max_valence: 0.4, min_energy: 0.8, max_energy: 1.0 },
+  // ... other moods ...
+};
+
+// Official Spotify playlists for fallback
+const CURATED_PLAYLISTS = {
+  happy: '37i9dQZF1DXdPec7aLTmlC', // Happy Hits
+  sad: '37i9dQZF1DX7qK8ma5wgG1',   // Life Sucks
+  angry: '37i9dQZF1DX3YSRoSdA634',  // Rock Classics
+  anxious: '37i9dQZF1DX4WYpdgoIcn6', // Chill Hits
+  romantic: '37i9dQZF1DX7qK8ma5wgG1', // Love Songs
+  // ... other moods ...
+};
+
+// ========================
+// 2. CORE FUNCTIONS
+// ========================
+
+async function refreshAccessToken() {
   try {
-    const response = await axios(authOptions);
+    const authString = Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString('base64');
+    
+    const response = await axios.post(
+      'https://accounts.spotify.com/api/token',
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: process.env.SPOTIFY_REFRESH_TOKEN
+      }),
+      {
+        headers: {
+          Authorization: `Basic ${authString}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: REQUEST_TIMEOUT
+      }
+    );
+
     accessToken = response.data.access_token;
+    console.log('✅ Spotify token refreshed');
     return accessToken;
-  } catch (err) {
-    console.error('❌ Error fetching access token:', err.response?.data || err);
-    throw err;
+  } catch (error) {
+    console.error('❌ Token refresh failed:', error.message);
+    throw new Error('Failed to refresh Spotify token');
   }
-};
+}
 
-const searchTracks = async (mood) => {
+async function spotifyRequest(endpoint, params = {}, retries = MAX_RETRIES) {
+  if (!accessToken) await refreshAccessToken();
+
   try {
-    const token = await getAccessToken();
-    const query = `${mood} playlist`;
-
-    console.log('🔍 Spotify Search Query:', query);
-
-    const response = await axios.get('https://api.spotify.com/v1/search', {
-      headers: { Authorization: `Bearer ${token}` },
-      params: {
-        q: query,
-        type: 'track',
-        limit: 50,
-        market: 'IN',
+    const response = await axios.get(`https://api.spotify.com/v1/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
       },
+      params,
+      timeout: REQUEST_TIMEOUT
     });
-
-    const items = response.data.tracks.items;
-    const trackIds = items.map(track => track.id).slice(0, 100);
-
-    const featuresResponse = await axios.get('https://api.spotify.com/v1/audio-features', {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { ids: trackIds.join(',') },
-    });
-
-    const audioFeaturesMap = {};
-    for (const feature of featuresResponse.data.audio_features) {
-      if (feature) audioFeaturesMap[feature.id] = feature;
+    return response.data;
+  } catch (error) {
+    if (retries > 0 && error.response?.status === 401) {
+      await refreshAccessToken();
+      return spotifyRequest(endpoint, params, retries - 1);
     }
-
-    const seenIDs = new Set();
-    const seenNames = new Set();
-    const artistCount = {};
-    const uniqueTracks = [];
-
-    for (let track of items) {
-      const id = track.id;
-      const name = track.name.toLowerCase();
-      const artistNames = track.artists.map(a => a.name).join(', ');
-      const features = audioFeaturesMap[id];
-      if (!features) continue;
-
-      // 🎯 Mood filtering
-      let pass = true;
-      if (mood === 'angry') {
-        pass = features.energy >= 0.6 && features.valence <= 0.6;
-      } else if (mood === 'calm') {
-        pass = features.energy <= 0.6 && features.valence >= 0.2;
-      } else if (mood === 'happy') {
-        pass = features.energy >= 0.4 && features.valence >= 0.5;
-      }
-
-      if (!pass) continue;
-
-      if (
-        seenIDs.has(id) ||
-        seenNames.has(name) ||
-        (artistCount[artistNames] || 0) >= 3
-      ) continue;
-
-      if (/karaoke|remix|version|instrumental|flip/i.test(name)) continue;
-      if (track.popularity < 50) continue;
-
-      seenIDs.add(id);
-      seenNames.add(name);
-      artistCount[artistNames] = (artistCount[artistNames] || 0) + 1;
-
-      uniqueTracks.push({
-        id,
-        name: track.name,
-        artist: artistNames,
-        url: track.external_urls.spotify,
-        preview_url: track.preview_url,
-        popularity: track.popularity,
-      });
-
-      if (uniqueTracks.length === 15) break;
-    }
-
-    // Fallback if not enough tracks
-    if (uniqueTracks.length < 10) {
-      console.warn(`⚠️ Only ${uniqueTracks.length} suitable tracks. Relaxing filters...`);
-
-      for (let track of items) {
-        const id = track.id;
-        const name = track.name.toLowerCase();
-        const artistNames = track.artists.map(a => a.name).join(', ');
-
-        if (
-          seenIDs.has(id) ||
-          seenNames.has(name) ||
-          (artistCount[artistNames] || 0) >= 3
-        ) continue;
-
-        if (/karaoke|remix|version|instrumental|flip/i.test(name)) continue;
-        if (track.popularity < 50) continue;
-
-        seenIDs.add(id);
-        seenNames.add(name);
-        artistCount[artistNames] = (artistCount[artistNames] || 0) + 1;
-
-        uniqueTracks.push({
-          id,
-          name: track.name,
-          artist: artistNames,
-          url: track.external_urls.spotify,
-          preview_url: track.preview_url,
-          popularity: track.popularity,
-        });
-
-        if (uniqueTracks.length === 15) break;
-      }
-    }
-
-// Final fallback – if still not enough, skip mood-based filtering
-if (uniqueTracks.length < 10) {
-  console.warn('⚠️ Still not enough tracks. Doing unfiltered keyword search...');
-
-  const fallbackRes = await axios.get('https://api.spotify.com/v1/search', {
-    headers: { Authorization: `Bearer ${token}` },
-    params: {
-      q: mood, // just the mood keyword
-      type: 'track',
-      limit: 50,
-      market: 'IN',
-    },
-  });
-
-  for (let track of fallbackRes.data.tracks.items) {
-    const id = track.id;
-    const name = track.name.toLowerCase();
-    const artistNames = track.artists.map(a => a.name).join(', ');
-
-    if (
-      seenIDs.has(id) ||
-      seenNames.has(name) ||
-      (artistCount[artistNames] || 0) >= 3
-    ) continue;
-
-    if (/karaoke|remix|version|instrumental|flip/i.test(name)) continue;
-    if (track.popularity < 50) continue;
-
-    seenIDs.add(id);
-    seenNames.add(name);
-    artistCount[artistNames] = (artistCount[artistNames] || 0) + 1;
-
-    uniqueTracks.push({
-      id,
-      name: track.name,
-      artist: artistNames,
-      url: track.external_urls.spotify,
-      preview_url: track.preview_url,
-      popularity: track.popularity,
-    });
-
-    if (uniqueTracks.length === 15) break;
+    throw error;
   }
 }
 
-// Final check
-if (uniqueTracks.length < 10) {
-  return Promise.reject({
-    error: '❌ Not enough suitable tracks found after all fallbacks',
-    found: uniqueTracks.length,
-    note: 'Try a broader or simpler mood keyword like "happy" or "party"',
-  });
+// ========================
+// 3. TRACK GENERATION
+// ========================
+
+async function getSpotifyRecommendations(mood) {
+  const genre = getValidGenreForMood(mood);
+  const features = moodAudioFeatures[mood] || moodAudioFeatures.happy;
+
+  try {
+    const data = await spotifyRequest('recommendations', {
+      seed_genres: genre,
+      limit: 20, // Request extra to account for filtering
+      ...features
+    });
+
+    if (!data.tracks || data.tracks.length < MIN_TRACKS) {
+      throw new Error(`Insufficient tracks received: ${data.tracks?.length || 0}`);
+    }
+
+    return {
+      tracks: filterTracks(data.tracks),
+      source: 'spotify-api',
+      genreUsed: genre
+    };
+  } catch (error) {
+    console.error('Spotify recommendations failed:', error.message);
+    throw error;
+  }
 }
 
+async function getCuratedPlaylist(mood) {
+  const playlistId = CURATED_PLAYLISTS[mood] || CURATED_PLAYLISTS.happy;
 
-    return uniqueTracks;
+  try {
+    const playlist = await spotifyRequest(`playlists/${playlistId}`);
+    const tracks = playlist.tracks.items
+      .map(item => item.track)
+      .filter(track => track); // Remove null tracks
 
-  } catch (err) {
-    console.error('❌ Spotify error:', err.response?.data || err.message);
-    return [];
+    if (tracks.length < MIN_TRACKS) {
+      throw new Error(`Playlist has insufficient tracks: ${tracks.length}`);
+    }
+
+    return {
+      tracks: filterTracks(tracks.slice(0, 20)), // Get first 20
+      source: 'spotify-playlist',
+      playlistName: playlist.name
+    };
+  } catch (error) {
+    console.error('Curated playlist failed:', error.message);
+    throw error;
   }
+}
+
+// ========================
+// 4. MAIN EXPORT
+// ========================
+
+async function getMoodBasedTracks(mood = 'happy') {
+  try {
+    // First try: Direct recommendations
+    return await getSpotifyRecommendations(mood);
+  } catch (error) {
+    console.log('🔁 Falling back to curated playlist...');
+    
+    // Second try: Pre-made playlists
+    return await getCuratedPlaylist(mood);
+    
+    // Note: No local fallback as requested
+  }
+}
+
+// ========================
+// HELPER FUNCTIONS
+// ========================
+
+function getValidGenreForMood(mood) {
+  const genres = moodGenreMap[mood] || moodGenreMap.happy;
+  return genres.find(g => VALID_GENRES.includes(g)) || 'pop';
+}
+
+function filterTracks(tracks) {
+  const artistCounts = {};
+  const seenTracks = new Set();
+  
+  return tracks.filter(track => {
+    const artistId = track.artists[0]?.id;
+    const trackKey = `${track.name.toLowerCase()}-${artistId}`;
+
+    // Skip duplicates
+    if (seenTracks.has(trackKey)) return false;
+    seenTracks.add(trackKey);
+
+    // Limit artist frequency
+    artistCounts[artistId] = (artistCounts[artistId] || 0) + 1;
+    return artistCounts[artistId] <= 3; // Max 3 tracks per artist
+  }).slice(0, 15); // Return max 15 tracks
+}
+
+module.exports = {
+  refreshAccessToken,
+  getMoodBasedTracks,
+  getSpotifyRecommendations,
+  getCuratedPlaylist
 };
-
-module.exports = { getAccessToken, searchTracks };
