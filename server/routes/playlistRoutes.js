@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { generatePlaylist } = require('../controllers/playlistController');
+const { getPlaylistForMood } = require('../controllers/playlistController');
 
-// Route: POST /api/playlists/generate
-router.post('/generate', generatePlaylist);
+// Route: POST /api/playlist
+router.post('/', getPlaylistForMood);
 
 module.exports = router;

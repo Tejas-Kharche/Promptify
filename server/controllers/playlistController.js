@@ -1,117 +1,49 @@
 const analyzePrompt = require('../utils/sentimentHelper');
-const { getMoodBasedTracks } = require('../utils/spotifyHelper');
-const Playlist = require('../models/Playlist');
+const { getPlaylistsByMood } = require('../utils/spotifyHelper');
 
-// Emergency fallback playlists (Spotify URIs)
-const EMERGENCY_PLAYLISTS = {
-  happy: 'spotify:playlist:37i9dQZF1DXdPec7aLTmlC',
-  sad: 'spotify:playlist:37i9dQZF1DX7qK8ma5wgG1',
-  angry: 'spotify:playlist:37i9dQZF1DX3YSRoSdA634',
-  calm: 'spotify:playlist:37i9dQZF1DX4WYpdgoIcn6'
+const getPlaylistForMood = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || text.trim() === '') {
+      return res.status(400).json({ error: 'Text input is required.' });
+    }
+
+    const { mood, score, comparative } = analyzePrompt(text);
+    console.log(`🧠 Mood detected: ${mood} (score: ${score}, comparative: ${comparative})`);
+
+    const playlists = await getPlaylistsByMood(mood);
+
+    if (!Array.isArray(playlists) || playlists.length === 0) {
+      return res.status(404).json({ error: `No playlists found for mood: ${mood}` });
+    }
+
+    const formatted = playlists
+      .filter(pl => pl && pl.name && pl.external_urls?.spotify) // null-safe filtering
+      .map((pl) => ({
+        name: pl.name,
+        id: pl.id,
+        url: pl.external_urls.spotify,
+        image: pl.images?.[0]?.url || '',
+        description: pl.description || '',
+        owner: pl.owner?.display_name || 'Unknown',
+      }));
+
+    if (formatted.length === 0) {
+      return res.status(500).json({ error: `No valid playlists returned for mood: ${mood}` });
+    }
+
+    res.status(200).json({
+      mood,
+      playlists: formatted,
+    });
+  } catch (error) {
+    console.error('❌ Error in getPlaylistForMood:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
-async function generatePlaylist(req, res) {
-  try {
-    const { prompt, userId } = req.body;
+module.exports = {
+  getPlaylistForMood,
+};
 
-    // Input validation
-    if (!prompt || prompt.trim().length < 3) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please describe your mood in 3+ characters'
-      });
-    }
-
-    console.log(`📩 Processing: "${prompt}"`);
-
-    // Sentiment analysis
-    const { mood, score, source } = analyzePrompt(prompt);
-    console.log(`🧠 Mood: ${mood} (${source}, score: ${score})`);
-
-    let tracks = [];
-    let generationSource = 'error';
-    let errorState = false;
-
-    try {
-      // Primary attempt: Spotify API
-      const result = await getMoodBasedTracks(mood);
-      tracks = result.tracks;
-      generationSource = result.source;
-    } catch (apiError) {
-      console.error('❌ Spotify failed:', apiError.message);
-      errorState = true;
-    }
-
-    // If we have no tracks but detected mood
-    if (tracks.length === 0 && mood) {
-      return res.json({
-        success: true,
-        warning: 'Using emergency fallback',
-        playlist: {
-          name: `${mood} Playlist`,
-          mood,
-          prompt,
-          tracks: [], // No tracks available
-          emergency_uri: EMERGENCY_PLAYLISTS[mood] || EMERGENCY_PLAYLISTS.happy,
-          instructions: 'Open this URI in Spotify to listen'
-        }
-      });
-    }
-
-    // Format tracks for response
-    const formattedTracks = tracks.map(track => ({
-      id: track.id,
-      name: track.name,
-      artist: track.artists.map(a => a.name).join(', '),
-      album: track.album?.name,
-      preview_url: track.preview_url,
-      spotify_url: track.external_urls?.spotify,
-      image: track.album?.images?.[0]?.url
-    }));
-
-    // Save to DB if user authenticated
-    let savedId = null;
-    if (userId && !errorState) {
-      const playlist = new Playlist({
-        user: userId,
-        name: generatePlaylistName(mood, prompt),
-        mood,
-        prompt,
-        tracks: formattedTracks.map(t => t.id),
-        source: generationSource
-      });
-      await playlist.save();
-      savedId = playlist._id;
-    }
-
-    return res.json({
-      success: true,
-      playlist: {
-        id: savedId,
-        name: generatePlaylistName(mood, prompt),
-        mood,
-        prompt,
-        source: generationSource,
-        tracks: formattedTracks,
-        ...(errorState && { warning: 'Partial service disruption' })
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 Critical error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Unable to generate playlist',
-      emergency_options: EMERGENCY_PLAYLISTS,
-      support_contact: 'help@yourdomain.com'
-    });
-  }
-}
-
-// Helper function
-function generatePlaylistName(mood, prompt) {
-  const keywords = prompt.split(' ').filter(w => w.length > 3);
-  return `${mood} Mix${keywords.length ? `: ${keywords[0]}` : ''}`;
-}
-
-module.exports = { generatePlaylist };
