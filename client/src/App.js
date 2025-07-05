@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
+import logo from './logo.svg';
 
 function App() {
   const [prompt, setPrompt] = useState('');
@@ -29,46 +30,71 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <h1>Promptify</h1>
-      <form onSubmit={handleSubmit} className="form-container">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="What's the vibe today"
-          required
-        />
-        <button type="submit">Generate Playlist</button>
-      </form>
+    <>
+    <div className='whole'>
+      <nav className="nav">
+        <button className="logo" onClick={() => window.location.reload()}>
+          <img src={logo} alt="Promptify Logo" />
+          <span>Promptify</span>
+        </button>
+        <div className="nav-buttons">
+          <button className="sign-in">Sign In</button>
+          <button className="get-started">Get Started</button>
+        </div>
+      </nav>
 
-      {loading && <p>🔄 Fetching playlists...</p>}
-      {error && <p className="error">{error}</p>}
-      {mood && <h2>🧠 Detected Mood: <span className="mood">{mood}</span></h2>}
+      <div className="hero-container">
+        <div className="main-content">
+          <h1>Let's Make You Some Playlists 🎧 </h1>
+          <p className="subtext">
+            Tell us how you're feeling and we'll create the perfect playlist for your mood
+          </p>
 
-      <div className="playlist-grid">
-        {playlists.map((pl) => (
-          <div key={pl.id} className="playlist-card">
-            <img src={pl.image} alt={pl.name} />
-            <h3>{pl.name}</h3>
-            <p><strong>Owner:</strong> {pl.owner}</p>
-            <h4>🎵 Top Tracks:</h4>
-            <ul className="track-list">
-              {pl.topTracks && pl.topTracks.length > 0 ? (
-                pl.topTracks.map((track, idx) => (
-                  <li key={idx}>
-                    {track.name} - <em>{track.artist}</em>
-                  </li>
-                ))
-              ) : (
-                <li>No tracks found</li>
-              )}
-            </ul>
-            <a href={pl.url} target="_blank" rel="noopener noreferrer">Open in Spotify</a>
+          <form onSubmit={handleSubmit} className="prompt-form">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Tell us how you're feeling today..."
+              required
+            />
+            <button type="submit" className="submit-button">✔</button>
+          </form>
+
+          {loading && <p className="loading-text">🎧 Fetching your playlist...</p>}
+          {error && <p className="error-text">{error}</p>}
+          {mood && <h3 className="mood-text">🧠 Mood detected: {mood}</h3>}
+        </div>
+
+        {playlists.length > 0 && (
+          <div className="playlist-grid">
+            {playlists.map((pl) => (
+              <div key={pl.id} className="playlist-card">
+                <img src={pl.image} alt={pl.name} />
+                <h3>{pl.name}</h3>
+                <p><strong>Owner:</strong> {pl.owner}</p>
+                <h4>🎵 Top Tracks:</h4>
+                <ul className="track-list">
+                  {pl.topTracks?.length > 0 ? (
+                    pl.topTracks.map((track, i) => (
+                      <li key={i}>
+                        {track.name} - <em>{track.artist}</em>
+                      </li>
+                    ))
+                  ) : (
+                    <li>No tracks found</li>
+                  )}
+                </ul>
+                <a href={pl.url} target="_blank" rel="noopener noreferrer">
+                  Open in Spotify
+                </a>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
