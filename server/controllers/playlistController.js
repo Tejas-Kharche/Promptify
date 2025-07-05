@@ -1,5 +1,5 @@
 const analyzePrompt = require('../utils/sentimentHelper');
-const { getPlaylistsByMood } = require('../utils/spotifyHelper');
+const { getPlaylistsByMood, getTopTracksFromPlaylist } = require('../utils/spotifyHelper');
 
 const getPlaylistForMood = async (req, res) => {
   try {
@@ -18,24 +18,35 @@ const getPlaylistForMood = async (req, res) => {
       return res.status(404).json({ error: `No playlists found for mood: ${mood}` });
     }
 
-    const formatted = playlists
-      .filter(pl => pl && pl.name && pl.external_urls?.spotify) // null-safe filtering
-      .map((pl) => ({
-        name: pl.name,
-        id: pl.id,
-        url: pl.external_urls.spotify,
-        image: pl.images?.[0]?.url || '',
-        description: pl.description || '',
-        owner: pl.owner?.display_name || 'Unknown',
-      }));
+    const enrichedPlaylists = await Promise.all(
+      playlists
+        .filter(pl => pl && pl.name && pl.external_urls?.spotify)
+        .map(async (pl) => {
+          let topTracks = [];
+          try {
+            topTracks = await getTopTracksFromPlaylist(pl.id);
+          } catch (err) {
+            console.warn(`⚠️ Could not fetch tracks for playlist ${pl.name}:`, err.message);
+          }
 
-    if (formatted.length === 0) {
+          return {
+            name: pl.name,
+            id: pl.id,
+            url: pl.external_urls.spotify,
+            image: pl.images?.[0]?.url || '',
+            topTracks,
+            owner: pl.owner?.display_name || 'Unknown',
+          };
+        })
+    );
+
+    if (enrichedPlaylists.length === 0) {
       return res.status(500).json({ error: `No valid playlists returned for mood: ${mood}` });
     }
 
     res.status(200).json({
       mood,
-      playlists: formatted,
+      playlists: enrichedPlaylists,
     });
   } catch (error) {
     console.error('❌ Error in getPlaylistForMood:', error.message);
@@ -46,4 +57,3 @@ const getPlaylistForMood = async (req, res) => {
 module.exports = {
   getPlaylistForMood,
 };
-

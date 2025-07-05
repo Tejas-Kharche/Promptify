@@ -62,10 +62,10 @@ async function getPlaylistsByMood(mood) {
     sad: ['acoustic', 'blues', 'piano'],
     angry: ['metal', 'hard-rock', 'punk'],
     anxious: ['ambient', 'minimal-techno', 'idm'],
-    calm: ['chill', 'classical', 'lo-fi'],
+    calm: ['chill', 'classical', 'lo-fi','indie'],
     romantic: ['romance', 'r-n-b', 'soul'],
     energetic: ['edm', 'electro', 'work-out'],
-    nostalgic: ['classical', 'retro', 'indie'],
+    nostalgic: ['classical', 'retro'],
     confident: ['hip-hop', 'trap', 'power-pop'],
   };
 
@@ -84,6 +84,28 @@ async function getPlaylistsByMood(mood) {
   return data.playlists.items;
 }
 
+// 🎵 Fetch top 5 tracks from a playlist
+async function getTopTracksFromPlaylist(playlistId, limit = 5) {
+  const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+  const params = {
+    limit,
+    fields: 'items(track(name, artists(name)))'
+  };
+
+  const data = await spotifyRequest(url, params);
+
+  return data.items
+    .filter(item => item.track && item.track.name && item.track.artists)
+    .map(item => {
+      const track = item.track;
+      return {
+        name: track.name,
+        artist: track.artists.map(a => a.name).join(', ')
+      };
+    });
+}
+
 module.exports = {
-  getPlaylistsByMood
+  getPlaylistsByMood,
+  getTopTracksFromPlaylist
 };
