@@ -14,7 +14,6 @@ app.use(express.json());
 
 // Routes
 app.use('/api/playlists', playlistRoutes);
-
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
