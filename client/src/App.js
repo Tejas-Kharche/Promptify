@@ -46,10 +46,10 @@ function App() {
       {entered && (
         <>
           <nav className="nav">
-          <div className="logo" onClick={() => window.location.reload()}>
-            <img src={logo} alt="Promptify Logo" />
-            <span>Promptify</span>
-          </div>
+            <div className="logo" onClick={() => window.location.reload()}>
+              <img src={logo} alt="Promptify Logo" />
+              <span>Promptify</span>
+            </div>
 
             {/* <div className="nav-buttons">
               <button className="sign-in">Sign In</button>
