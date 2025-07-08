@@ -59,14 +59,14 @@ async function spotifyRequest(url, params = {}, retries = 1) {
 async function getPlaylistsByMood(mood) {
   const moodToGenre = {
     happy: ['pop', 'dance', 'funk'],
-    sad: ['acoustic', 'blues', 'piano'],
-    angry: ['metal', 'hard-rock', 'punk'],
+    sad: ['acoustic', 'blues', 'piano','soul'],
+    angry: ['metal', 'hard-rock', 'punk','hip-hop'],
     anxious: ['ambient', 'minimal-techno', 'idm'],
-    calm: ['chill', 'classical', 'lo-fi','indie'],
-    romantic: ['romance', 'r-n-b', 'soul'],
+    calm: ['chill', 'classical', 'lo-fi','indie','r-n-b', 'soul'],
+    romantic: ['romance'],
     energetic: ['edm', 'electro', 'work-out'],
     nostalgic: ['classical', 'retro'],
-    confident: ['hip-hop', 'trap', 'power-pop'],
+    confident: ['hip-hop', 'trap', 'power-pop','punk'],
   };
 
   const genreOptions = moodToGenre[mood.toLowerCase()] || ['pop'];
@@ -77,14 +77,14 @@ async function getPlaylistsByMood(mood) {
   const params = {
     q: selectedGenre,
     type: 'playlist',
-    limit: 10,
+    limit: 15,
   };
 
   const data = await spotifyRequest(searchURL, params);
   return data.playlists.items;
 }
 
-// 🎵 Fetch top 5 tracks from a playlist
+// Fetch top 5 tracks from a playlist
 async function getTopTracksFromPlaylist(playlistId, limit = 5) {
   const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
   const params = {
