@@ -77,7 +77,7 @@ function App() {
 
               {loading && <p className="loading-text">🎧 Fetching your playlist...</p>}
               {error && <p className="error-text">{error}</p>}
-              {mood && <h3 className="mood-text"> There you go!</h3>
+              {mood && <h3 className="mood-text">Mood Detected: {mood}<br></br>There you go!</h3>
               }
             </div>
 
