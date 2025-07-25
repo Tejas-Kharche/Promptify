@@ -19,7 +19,8 @@ function App() {
     setMood('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/playlists', { text: prompt });
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/playlists`, { text: prompt });
+
       setPlaylists(res.data.playlists);
       setMood(res.data.mood);
     } catch (err) {
