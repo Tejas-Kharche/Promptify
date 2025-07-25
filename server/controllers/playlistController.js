@@ -9,6 +9,7 @@ const getPlaylistForMood = async (req, res) => {
     if (!text || text.trim() === '') {
       return res.status(400).json({ error: 'Text input is required.' });
     }
+    console.log("Prompt received:", req.body.text);
 
     // Analyze mood
     const { mood, score, comparative } = analyzePrompt(text);
