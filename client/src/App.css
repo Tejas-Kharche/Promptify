@@ -77,33 +77,31 @@ body {
   transform: scale(1.05);
 }
 
-/* Prompt form */
+/* Prompt form (horizontal layout on all devices) */
 .prompt-form {
   display: flex;
   background-color: #191414;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 30px;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
   max-width: 600px;
   margin: 0 auto 30px auto;
-  transition: transform 0.3s ease;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .prompt-form:hover {
-  transform: scale(1.05);
-  box-shadow: #191414;
+  transform: scale(1.02);
 }
 
 .prompt-form input {
   background: transparent;
   border: none;
   color: #fff;
-  flex-grow: 1;
   font-size: 16px;
   outline: none;
+  flex: 1;
   min-width: 0;
 }
 
@@ -121,6 +119,8 @@ body {
   font-size: 20px;
   font-weight: bold;
   cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 .submit-button:hover {
@@ -208,10 +208,6 @@ body {
   text-decoration: underline;
 }
 
-.logo:hover {
-  opacity: 0.85;
-}
-
 /* Intro Screen */
 .intro-screen {
   position: fixed;
@@ -262,7 +258,7 @@ body {
   transform: scale(1.5);
 }
 
-/* 🔽 Responsive Styling */
+/* Responsive Styling */
 @media (max-width: 600px) {
   .main-content h1 {
     font-size: 32px;
@@ -273,24 +269,18 @@ body {
   }
 
   .prompt-form {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 12px;
-    border-radius: 16px;
+    padding: 8px 14px;
   }
 
   .prompt-form input {
-    font-size: 16px;
-    padding: 8px 12px;
-    width: 100%;
-    margin-bottom: 10px;
+    font-size: 15px;
   }
 
   .submit-button {
-    width: 100%;
-    border-radius: 10px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     font-size: 18px;
+    margin-left: 10px;
   }
 
   .intro-logo {
@@ -300,10 +290,6 @@ body {
 
   .intro-text {
     font-size: 48px;
-  }
-
-  .playlist-card {
-    max-width: 90%;
   }
 
   .playlist-card img {
