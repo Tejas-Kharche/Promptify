@@ -61,10 +61,10 @@ async function getPlaylistsByMood(mood) {
     happy: ['pop', 'dance', 'funk'],
     sad: ['acoustic', 'blues', 'piano','soul','soul','soul', 'lo-fi'],
     angry: ['metal', 'hard-rock', 'punk','hip-hop'],
-    anxious: ['classical','ambient', 'minimal-techno', 'idm'],
+    anxious: ['classical','ambient', 'chill', 'soul','lo-fi'],
     calm: ['chill', 'classical', 'lo-fi','indie','lo-fi','lo-fi','r-n-b', 'soul'],
-    romantic: ['romance'],
-    energetic: ['edm', 'electro', 'work-out'],
+    romantic: ['romance','soul'],
+    energetic: ['edm', 'electro', 'work-out','minimal-techno'],
     nostalgic: ['retro'],
     confident: ['hip-hop', 'trap', 'power-pop','punk'],
   };
