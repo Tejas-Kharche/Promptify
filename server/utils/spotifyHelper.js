@@ -59,11 +59,11 @@ async function spotifyRequest(url, params = {}, retries = 1) {
 async function getPlaylistsByMood(mood) {
   const moodToGenre = {
     happy: ['pop', 'dance', 'funk'],
-    sad: ['acoustic', 'blues', 'piano','soul','soul','soul', 'lo-fi'],
+    sad: ['acoustic', 'blues', 'piano','soul','soul', 'lo-fi'],
     angry: ['metal', 'hard-rock', 'punk','hip-hop'],
     anxious: ['classical','ambient', 'chill', 'soul','lo-fi'],
-    calm: ['chill', 'classical', 'lo-fi','indie','lo-fi','lo-fi','r-n-b', 'soul'],
-    romantic: ['romance','soul'],
+    calm: ['chill', 'classical', 'lo-fi','indie','lo-fi','r-n-b', 'soul'],
+    romantic: ['romance'],
     energetic: ['edm', 'electro', 'work-out','minimal-techno'],
     nostalgic: ['retro'],
     confident: ['hip-hop', 'trap', 'power-pop','punk'],
