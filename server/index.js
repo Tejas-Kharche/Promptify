@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
-app.use('/auth', authRoutes);
+
 
 
 const playlistRoutes = require('./routes/playlistRoutes');
@@ -23,6 +23,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
+app.use('/auth', authRoutes);
 app.use('/api/playlists', playlistRoutes);
 // Connect to MongoDB
 mongoose
