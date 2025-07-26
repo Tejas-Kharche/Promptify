@@ -73,7 +73,7 @@ function App() {
                   placeholder="What are you feeling today..."
                   required
                 />
-                <button type="submit" className="submit-button">✔</button>
+                <button type="submit" className="submit-button"><i class="fa-solid fa-headphones"></i></button>
               </form>
 
               {loading && <p className="loading-text">🎧 Fetching your playlist...</p>}
