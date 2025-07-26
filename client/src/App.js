@@ -70,7 +70,7 @@ function App() {
                   type="text"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="How are you feeling today..."
+                  placeholder="What are you feeling today..."
                   required
                 />
                 <button type="submit" className="submit-button">✔</button>
